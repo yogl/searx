@@ -33,6 +33,26 @@
     }
   }
 
+  function createClearButton(qinput) {
+    var cs = document.getElementById('clear_search');
+    var updateClearButton = function() {
+      if (qinput.value.length === 0) {
+	cs.classList.add("empty");
+      } else {
+	cs.classList.remove("empty");
+      }
+    };
+
+    // update status, event listener
+    updateClearButton();
+    cs.addEventListener('click', function() {
+      qinput.value='';
+      qinput.focus();
+      updateClearButton();
+    });
+    qinput.addEventListener('keyup', updateClearButton, false);
+  }
+
   searx.ready(function() {
     qinput = d.getElementById(qinput_id);
 
@@ -46,11 +66,14 @@
     }
 
     if (qinput !== null) {
+      // clear button
+      createClearButton(qinput);
+      
       // autocompleter
       if (searx.autocompleter) {
         searx.autocomplete = AutoComplete.call(w, {
           Url: "./autocompleter",
-          EmptyMessage: searx.noItemFound,
+          EmptyMessage: searx.no_item_found,
           HttpMethod: searx.method,
           MinChars: 4,
           Delay: 300,

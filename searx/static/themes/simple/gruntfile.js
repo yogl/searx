@@ -10,31 +10,8 @@ module.exports = function(grunt) {
         tasks: ['jshint', 'concat', 'uglify', 'webfont', 'less:development', 'less:production']
       }
     },
-    concat: {
-      options: {
-        separator: ';'
-      },
-      dist: {
-        src: ['js/searx_src/*.js'],
-        dest: 'js/searx.js'
-      }
-    },
-    uglify: {
-      options: {
-        banner: '/*! simple/searx.min.js | <%= grunt.template.today("dd-mm-yyyy") %> | https://github.com/asciimoo/searx */\n',
-	output: {
-	    comments: 'some'
-	},
-        sourceMap: true
-      },
-      dist: {
-        files: {
-          'js/searx.min.js': ['<%= concat.dist.dest %>']
-        }
-      }
-    },
     jshint: {
-      files: ['js/searx_src/*.js'],
+      files: ['js/searx_src/*.js', 'js/searx_header/*.js'],
       options: {
         reporterOutput: "",
         proto: true,
@@ -43,6 +20,36 @@ module.exports = function(grunt) {
           browser: true,
           jQuery: false,
           devel: true
+        }
+      }
+    },
+    concat: {
+      head_and_body: {
+        options: {
+          separator: ';'
+        },
+        files: {
+          'js/searx.head.js': ['js/searx_head/*.js'],
+          'js/searx.js': ['js/searx_src/*.js']
+        }
+      }
+    },
+    uglify: {
+      options: {
+        banner: '/*! simple/searx.min.js | <%= grunt.template.today("dd-mm-yyyy") %> | https://github.com/asciimoo/searx */\n',
+        output: {
+	        comments: 'some'
+        },
+        ie8: false,
+        warnings: true,
+        compress: false,
+        mangle: true,
+        sourceMap: true
+      },
+      dist: {
+        files: {
+          'js/searx.head.min.js': ['js/searx.head.js'],
+          'js/searx.min.js': ['js/searx.js']
         }
       }
     },
@@ -63,7 +70,7 @@ module.exports = function(grunt) {
           plugins: [
             new (require('less-plugin-clean-css'))({
               advanced: true,
-              compatibility: 'ie8'
+              compatibility: '*'
             })
           ],
           banner: '/*! searx | <%= grunt.template.today("dd-mm-yyyy") %> | https://github.com/asciimoo/searx */\n'
@@ -99,7 +106,8 @@ module.exports = function(grunt) {
           'node_modules/ionicons-npm/src/music-note.svg',
           'node_modules/ionicons-npm/src/ion-close-round.svg',
           'node_modules/ionicons-npm/src/android-more-vertical.svg',
-          'magnet.svg'
+          'magnet.svg',
+          'node_modules/ionicons-npm/src/android-close.svg',	  
         ],
         dest: 'fonts',
         destLess: 'less',

@@ -28,7 +28,7 @@ category_to_keyword = {'general': 'web',
                        'social media': 'social'}
 
 # search-url
-url = 'https://api.qwant.com/api/search/{keyword}?count=10&offset={offset}&f=&{query}'
+url = 'https://api.qwant.com/api/search/{keyword}?count=10&offset={offset}&f=&{query}&t={keyword}&uiv=4'
 
 
 # do search-request
@@ -46,8 +46,9 @@ def request(query, params):
                                    offset=offset)
 
     # add language tag
-    language = match_language(params['language'], supported_languages)
-    params['url'] += '&locale=' + language.replace('-', '_').lower()
+    if params['language'] != 'all':
+        language = match_language(params['language'], supported_languages, language_aliases)
+        params['url'] += '&locale=' + language.replace('-', '_').lower()
 
     return params
 

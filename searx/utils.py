@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import csv
 import hashlib
 import hmac
@@ -10,8 +11,10 @@ from codecs import getincrementalencoder
 from imp import load_source
 from numbers import Number
 from os.path import splitext, join
+from io import open
 from random import choice
 import sys
+import json
 
 from searx import settings
 from searx.version import VERSION_STRING
@@ -39,34 +42,26 @@ else:
 
 logger = logger.getChild('utils')
 
-ua_versions = ('40.0',
-               '41.0',
-               '42.0',
-               '43.0',
-               '44.0',
-               '45.0',
-               '46.0',
-               '47.0')
-
-ua_os = ('Windows NT 6.3; WOW64',
-         'X11; Linux x86_64',
-         'X11; Linux x86')
-
-ua = "Mozilla/5.0 ({os}; rv:{version}) Gecko/20100101 Firefox/{version}"
-
 blocked_tags = ('script',
                 'style')
 
+ecma_unescape4_re = re.compile(r'%u([0-9a-fA-F]{4})', re.UNICODE)
+ecma_unescape2_re = re.compile(r'%([0-9a-fA-F]{2})', re.UNICODE)
 
-def gen_useragent():
-    # TODO
-    return ua.format(os=choice(ua_os), version=choice(ua_versions))
+useragents = json.loads(open(os.path.dirname(os.path.realpath(__file__))
+                             + "/data/useragents.json", 'r', encoding='utf-8').read())
+
+lang_to_lc_cache = dict()
 
 
 def searx_useragent():
     return 'searx/{searx_version} {suffix}'.format(
            searx_version=VERSION_STRING,
            suffix=settings['outgoing'].get('useragent_suffix', ''))
+
+
+def gen_useragent(os=None):
+    return str(useragents['ua'].format(os=os or choice(useragents['os']), version=choice(useragents['versions'])))
 
 
 def highlight_content(content, query):
@@ -194,7 +189,7 @@ def get_resources_directory(searx_directory, subdirectory, resources_directory):
     if not resources_directory:
         resources_directory = os.path.join(searx_directory, subdirectory)
     if not os.path.isdir(resources_directory):
-        raise Exception(directory + " is not a directory")
+        raise Exception(resources_directory + " is not a directory")
     return resources_directory
 
 
@@ -325,6 +320,17 @@ def is_valid_lang(lang):
         return False
 
 
+def _get_lang_to_lc_dict(lang_list):
+    key = str(lang_list)
+    value = lang_to_lc_cache.get(key, None)
+    if value is None:
+        value = dict()
+        for lc in lang_list:
+            value.setdefault(lc.split('-')[0], lc)
+        lang_to_lc_cache[key] = value
+    return value
+
+
 # auxiliary function to match lang_code in lang_list
 def _match_language(lang_code, lang_list=[], custom_aliases={}):
     # replace language code with a custom alias if necessary
@@ -345,11 +351,7 @@ def _match_language(lang_code, lang_list=[], custom_aliases={}):
             return new_code
 
     # try to get the any supported country for this language
-    for lc in lang_list:
-        if lang_code == lc.split('-')[0]:
-            return lc
-
-    return None
+    return _get_lang_to_lc_dict(lang_list).get(lang_code, None)
 
 
 # get the language code from lang_list that best matches locale_code
@@ -395,10 +397,17 @@ def load_module(filename, module_dir):
 
 
 def new_hmac(secret_key, url):
+    try:
+        secret_key_bytes = bytes(secret_key, 'utf-8')
+    except TypeError as err:
+        if isinstance(secret_key, bytes):
+            secret_key_bytes = secret_key
+        else:
+            raise err
     if sys.version_info[0] == 2:
         return hmac.new(bytes(secret_key), url, hashlib.sha256).hexdigest()
     else:
-        return hmac.new(bytes(secret_key, 'utf-8'), url, hashlib.sha256).hexdigest()
+        return hmac.new(secret_key_bytes, url, hashlib.sha256).hexdigest()
 
 
 def to_string(obj):
@@ -410,3 +419,18 @@ def to_string(obj):
         return obj.__str__()
     if hasattr(obj, '__repr__'):
         return obj.__repr__()
+
+
+def ecma_unescape(s):
+    """
+    python implementation of the unescape javascript function
+
+    https://www.ecma-international.org/ecma-262/6.0/#sec-unescape-string
+    https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Objets_globaux/unescape
+    """
+    # s = unicode(s)
+    # "%u5409" becomes "吉"
+    s = ecma_unescape4_re.sub(lambda e: unichr(int(e.group(1), 16)), s)
+    # "%20" becomes " ", "%F3" becomes "ó"
+    s = ecma_unescape2_re.sub(lambda e: unichr(int(e.group(1), 16)), s)
+    return s

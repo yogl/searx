@@ -12,6 +12,7 @@ if version[0] == '3':
 
 COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 5  # 5 years
 LANGUAGE_CODES = [l[0] for l in languages]
+LANGUAGE_CODES.append('all')
 DISABLED = 0
 ENABLED = 1
 DOI_RESOLVERS = list(settings['doi_resolvers'])
@@ -264,6 +265,9 @@ class Preferences(object):
                                                                                 'False': False,
                                                                                 'True': True}),
                                    'doi_resolver': MultipleChoiceSetting(['oadoi.org'], choices=DOI_RESOLVERS),
+                                   'oscar-style': EnumStringSetting(
+                                       settings['ui'].get('theme_args', {}).get('oscar_style', 'logicodev'),
+                                       choices=['', 'logicodev', 'logicodev-dark', 'pointhi']),
                                    }
 
         self.engines = EnginesSetting('engines', choices=engines)
@@ -288,7 +292,10 @@ class Preferences(object):
 
     def parse_encoded_data(self, input_data):
         decoded_data = decompress(urlsafe_b64decode(input_data.encode('utf-8')))
-        self.parse_dict({x: y[0] for x, y in parse_qs(unicode(decoded_data)).items()})
+        dict_data = {}
+        for x, y in parse_qs(decoded_data).items():
+            dict_data[x.decode('utf8')] = y[0].decode('utf8')
+        self.parse_dict(dict_data)
 
     def parse_dict(self, input_data):
         for user_setting_name, user_setting in input_data.items():
